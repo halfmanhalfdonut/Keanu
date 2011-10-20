@@ -1,12 +1,11 @@
-/* 
- * Keanu.js
- * (c) 2011 Nick Jurista
- * Keanu.js may be freely distributed under the MIT license.
- */ 
-
 var Keanu; // Whoa
 (function() {
 	var INTERVAL_TIME = 10; // 10ms between each interval
+
+	/*	Keanu constructor (new Keanu())
+	 *	@id - String - DOM element ID for desired canvas object
+	 *	returns Keanu object
+	 */
 	Keanu = function(id) {
 		if (!id) return false;
 		
@@ -16,10 +15,26 @@ var Keanu; // Whoa
 		this.checkTimer = null;
 		this.triggering = false;
 		this.subscribers = {};
+		this.checkedDimensions = false;
+		this.clearX = 0;
+		this.clearY = 0;
+		this.clearW = this.canvas.width;
+		this.clearH = this.canvas.height;
+
+		return this;
 	};
 
+	// Optional modules namespace for external modules
+	Keanu.modules = {};
+
+	// Keanu prototype
 	Keanu.prototype = {
 		constructor: Keanu,
+		/*	Keanu.subscribe()
+		 *	@type - String - event type
+		 *	@listener - Function - callback fired when this event is triggered
+		 *	@zIndex - Number - z-index of anything animated within the provided callback
+		 */
 		subscribe: function(type, listener, zIndex) {
 			zIndex = zIndex || 0;
 			if (typeof this.subscribers[type] == "undefined") {
@@ -31,6 +46,11 @@ var Keanu; // Whoa
 		    this.subscribers[type][zIndex].push(listener);
 			if (!this.interval) this.start();
 		},
+		/*	Keanu.unsubscribe()
+		 *	@type - String - event type
+		 *	@listener - Function - callback
+		 *	@zIndex - Number - z-index on the animation stack
+		 */
 		unsubscribe: function(type, listener, zIndex) {
 			var self = this;
 			// use zIndex if they send it in
@@ -76,6 +96,10 @@ var Keanu; // Whoa
 			}, 100);
 			
 		},
+		/*	Keanu.trigger()
+		 *	@event - String - event type
+		 *	Fires a given event if a given event exists
+		 */
 		trigger: function(event) {
 			this.triggering = true;
 			if (typeof event == "string") {
@@ -96,12 +120,16 @@ var Keanu; // Whoa
 						var sub = subscribers[i];
 						for (var j = 0, gth = sub.length; j < gth; j += 1) {
 							if (sub[j]) sub[j].call(this, event);
+							//if (sub[j]) sub[j]();
 						}
 		        	}
 		        }
 		    }
 			this.triggering = false;
 		},
+		/*	Keanu.start()
+		 *	Starts the animation loop
+		 */
 		start: function() {
 			if (!this.interval) {
 				var self = this;
@@ -112,12 +140,18 @@ var Keanu; // Whoa
 				self.trigger("start");
 			}
 		},
+		/*	Keanu.stop()
+		 *	Stops the animation loop
+		 */
 		stop: function() { 
 			clearInterval(this.interval);
 			this.interval = null;
 			this.clear();
 			this.trigger("stop");
 		},
+		/*	Keanu.reset()
+		 *	Reset the Keanu object
+		 */
 		reset: function() {
 			var self = this,
 				doIt = function() {
@@ -134,7 +168,56 @@ var Keanu; // Whoa
 			}
 			
 		},
-		clear: function() { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); this.trigger("clear"); },
+		/*	Keanu.clear()
+		 *	Clear only the region that is being used, or all of it if nothing is specified
+		 */
+		clear: function() { 
+			var x = 0,
+				y = 0,
+				w = this.canvas.width,
+				h = this.canvas.height;
+			this.ctx.clearRect(x, y, w, h);
+			this.checkedDimensions = false;
+			this.clearX = 0;
+			this.clearY = 0;
+			this.clearW = 0;
+			this.clearH = 0;
+			//this.trigger("clear"); 
+		},
+		/*	Keanu.setDimension()
+		 *	@dim - Number - dimension to set
+		 *	@val - Number - value to check against the dimension
+		 *	@fn - Function (Math.min or Math.max) - determine the appropriate value for dim
+		 */
+		setDimension: function(dim, val, fn) {
+			dim = !isNaN(dim)
+				? fn && fn(dim, val)
+				: val;
+			return dim;
+		},
+		/*	Keanu.setDimensions()
+		 *	@dims - Object ({x: 0, y: 0, w: 0, h: 0}) - Dimensions to set
+		 *	Determines the minimum X and Y, maximum Width and Height points to clear on redraw
+		 */
+		setDimensions: function(dims) {
+			if (this.checkedDimensions) {
+				this.clearX = this.setDimension(this.clearX, dims.x, Math.min);
+				this.clearY = this.setDimension(this.clearY, dims.y, Math.min);
+				this.clearW = this.setDimension(this.clearW, dims.w, Math.max);
+				this.clearH = this.setDimension(this.clearH, dims.h, Math.max);
+			} else {
+				this.clearX = dims.x;
+				this.clearY = dims.y;
+				this.clearW = dims.w;
+				this.clearH = dims.h;
+				this.checkedDimensions = true;
+			}
+		},
+		/*	Keanu.isEmpty()
+		 *	o - Object
+		 *	Checks a given object for properties
+		 *	returns true or false
+		 */
 		isEmpty: function(o) {
 			var empty = true,
 				i, l, p;
@@ -152,49 +235,17 @@ var Keanu; // Whoa
 			}
 			return empty;
 		},
-		line: function(data) {
-			if (!data) return;
-			data.origin = data.origin || {};
-			data.destination = data.destination || {};
-			data.styles = data.styles || {};
-			var originX = data.origin[0] || 0,
-				originY = data.origin[1] || 0,
-				destinationX = data.destination[0] || 0,
-				destinationY = data.destination[1] || 0,
-				w = data.styles.lineWidth || 0,
-				s = data.styles.strokeStyle || "#FFF";
-			this.ctx.beginPath();
-			this.ctx.strokeStyle = s;
-			this.ctx.lineWidth = w;
-			this.ctx.moveTo(originX, originY);
-			this.ctx.lineTo(destinationX, destinationY);
-			this.ctx.stroke();
-			this.ctx.closePath();
-		},
-		circle: function(data) {
-			data = data || {};
-			data.styles = data.styles || {};
-			var x = data.x || 0,
-				y = data.y || 0,
-				r = data.r || 0,
-				f = data.styles.fillStyle || "#FFF",
-				w = data.styles.lineWidth || 0,
-				s = data.styles.strokeStyle || "#FFF";
-			this.ctx.fillStyle = f;
-			this.ctx.strokeStyle = s;
-			this.ctx.lineWidth = w;
-			this.ctx.beginPath();
-			this.ctx.arc(x, y, r, 0, Math.PI * 2, true);
-			this.ctx.closePath();
-			this.ctx.fill();
-			this.ctx.stroke();
-		},
+		/*	Keanu.getIntervalTime()
+		 *	returns the time interval of the animation loop
+		 */
 		getIntervalTime: function() { return INTERVAL_TIME; },
 		/*
 		 * Beware! Math be livin' below here, me hearties.
 		 */
 		tweens: {
-			// time, begin, change, duration
+			/*	Keanu.tweens[linear|easeIn|easeOut|easeInOut|quadraticBezierCurve]();
+			 *	returns a value based upon the Time, Beginning value, Change between start and end, and animation Duration
+			 */
 			linear: function(t, b, c, d) { return c * t / d + b; },
 			easeIn: function(t, b, c, d) { return c * (t /= d) * t + b;  },
 			easeOut: function(t, b, c, d) { return -c * (t /= d) * (t - 2) + b;  },
@@ -203,135 +254,8 @@ var Keanu; // Whoa
 				return -c / 2 * ((--t) * (t - 2) - 1) + b;
 			},
 			quadraticBezierCurve: function(t, p0, p1, p2) {
-				return Math.pow((1 - t), 2) * p0 + 2 * (1 - t) * t * p1 + Math.pow(t, 2) * p2;
+				return ~~(Math.pow((1 - t), 2) * p0 + 2 * (1 - t) * t * p1 + Math.pow(t, 2) * p2);
 			}
-		},
-		Linear: function(keanu, opts, duration) {
-			if (!keanu) return;
-			var originX, originY, originRadius, destinationX, destinationY, destinationR, ease, fn, styles, ms, currentX, currentY, currentRadius, tick = 0, zIndex;
-			opts.origin = opts.origin || [];
-			opts.destination = opts.destination || [];
-			
-			originX	= opts.origin[0] || 0; // {origin: [x, y, r]}
-			originY	= opts.origin[1] || 0;
-			originRadius	= opts.origin[2] || 0;
-			destinationX	= opts.destination[0] || 0; // {destination: [x, y, r]}
-			destinationY	= opts.destination[1] || 0;
-			destinationRadius	= opts.destination[2] || 0;
-			draw = opts.draw || keanu.circle;
-			ease = opts.easing || "linear"; // {easing: [linear | easeIn | easeOut | easeInOut | function() {}] }
-			fn	= opts.callback;
-			styles	= opts.styles || {};
-			ms	= duration || 0;
-			zIndex = opts.zIndex || 0;
-			
-			currentX	= originX;
-			currentY	= originY;
-			currentRadius = originRadius;
-
-			var easing	= keanu.tweens[ease] ? keanu.tweens[ease] : (ease ? ease : keanu.tweens.linear), // this statement is too complex
-				t = 0,
-				currentTime = ms / INTERVAL_TIME,
-				xChange = destinationX - originX,
-				yChange = destinationY - originY,
-				rChange = destinationRadius - originRadius,
-				change = function() {
-					currentX = easing(t, originX, xChange, currentTime);
-					currentY = easing(t, originY, yChange, currentTime);
-					currentRadius = easing(t, originRadius, rChange, currentTime);
-				
-					draw && draw.call(this, {
-						x: currentX, 
-						y: currentY, 
-						r: currentRadius, 
-						styles: { 
-							fillStyle: styles.fillStyle || false,
-							strokeStyle: styles.strokeStyle || false,
-							lineWidth: styles.lineWidth || false
-						}
-					});
-					t++;
-					tick += INTERVAL_TIME;
-
-					if (tick >= duration) {
-						keanu.unsubscribe("enterFrame", change, zIndex);
-						fn && fn();
-					}
-				};
-			keanu.subscribe("enterFrame", change, zIndex);
-		},
-		Curve: function(keanu, opts, duration) {
-			if (!keanu) return;
-			var originX, originY, originRadius, destinationX, destinationY, destinationRadius, ease, fn, styles, ms, currentX, currentY, currentRadius, controlX, controlY, controlRadius, tick = 0, zIndex;
-			opts.origin = opts.origin || [];
-			opts.control = opts.control || [];
-			opts.destination = opts.destination || [];
-			
-			originX	= opts.origin[0] || 0; // {origin: [x, y, r]}
-			originY	= opts.origin[1] || 0;
-			originRadius	= opts.origin[2] || 0;
-			controlX	= opts.control[0] || 0; // {control: [x, y, r]}
-			controlY	= opts.control[1] || 0;
-			controlRadius = opts.control[2] || 0;
-			destinationX	= opts.destination[0] || 0; // {destination: [x, y, r]}
-			destinationY	= opts.destination[1] || 0;
-			destinationRadius	= opts.destination[2] || 0;
-			draw = opts.draw || keanu.circle;
-			ease = opts.easing || "linear"; // {easing: [linear | easeIn | easeOut | easeInOut | function() {}] }
-			fn	= opts.callback;
-			styles = opts.styles || {};
-			ms	= duration || 0;
-			zIndex = opts.zIndex || 0;
-
-			originX = originX !== controlX ? originX : originX + 1; // these have to be different for creating a proper curve
-			originY = originY !== controlY ? originY : originY + 1;
-			
-			currentX	= originX;
-			currentY	= originY;
-			currentRadius = originRadius;
-
-			var easing	= keanu.tweens[ease] ? keanu.tweens[ease] : (ease ? ease : keanu.tweens.linear), // this statement is too complex
-				t = 0,
-				xChange = destinationX - originX,
-				yChange = destinationY - originY,
-				rChange1 = controlRadius - originRadius,
-				rChange2 = destinationRadius - controlRadius,
-				currentTime = ms / INTERVAL_TIME,
-				change = function() {
-					currentX = easing(t, originX, xChange, currentTime);
-					currentY = easing(t, originY, yChange, currentTime);
-
-					if (t < currentTime / 6) {
-						currentRadius = easing(t, originRadius, rChange1, currentTime);
-					} else {
-						currentRadius = easing(t, controlRadius, rChange2, currentTime);
-					}
-				
-					if (controlX != 0) {
-						currentX = keanu.tweens.quadraticBezierCurve((originX - currentX) / (originX - destinationX), originX, controlX, destinationX);
-					}
-					if (controlY != 0) {
-						currentY = keanu.tweens.quadraticBezierCurve((originY - currentY) / (originY - destinationY), originY, controlY, destinationY);
-					}
-					draw && draw.call(this, {
-						x: currentX, 
-						y: currentY, 
-						r: currentRadius, 
-						styles: { 
-							fillStyle: styles.fillStyle || false,
-							strokeStyle: styles.strokeStyle || false,
-							lineWidth: styles.lineWidth || false
-						}
-					});
-					t++;
-					tick += INTERVAL_TIME;
-					if (tick >= duration) {
-						keanu.unsubscribe("enterFrame", change, zIndex);
-						fn && fn();
-					}
-				};
-
-			keanu.subscribe("enterFrame", change, zIndex);
 		}
 	};
 }());
