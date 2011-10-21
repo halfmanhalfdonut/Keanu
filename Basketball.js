@@ -69,7 +69,7 @@
 		// this is the Keanu enterFrame callback -- it provides the draw state for our basketball at each frame
 		this.draw = function() {
 			self.drawShadow();
-			self.drawTrail();
+			if (this.useTrail) self.drawTrail();
 			self.drawShot();
 			self.frame++;
 			self.tick += self.intervalTime;

@@ -2,7 +2,7 @@ var Keanu; // Whoa
 (function() {
 	var INTERVAL_TIME = 10; // 10ms between each interval
 
-	/*	Keanu constructor (new Keanu())
+	/*	new Keanu(String id)
 	 *	@id - String - DOM element ID for desired canvas object
 	 *	returns Keanu object
 	 */
@@ -30,7 +30,7 @@ var Keanu; // Whoa
 	// Keanu prototype
 	Keanu.prototype = {
 		constructor: Keanu,
-		/*	Keanu.subscribe()
+		/*	Keanu.subscribe( String type, Function listener, Number zIndex )
 		 *	@type - String - event type
 		 *	@listener - Function - callback fired when this event is triggered
 		 *	@zIndex - Number - z-index of anything animated within the provided callback
@@ -46,7 +46,7 @@ var Keanu; // Whoa
 		    this.subscribers[type][zIndex].push(listener);
 			if (!this.interval) this.start();
 		},
-		/*	Keanu.unsubscribe()
+		/*	Keanu.unsubscribe( String type, Function listener, Number zIndex )
 		 *	@type - String - event type
 		 *	@listener - Function - callback
 		 *	@zIndex - Number - z-index on the animation stack
@@ -96,7 +96,7 @@ var Keanu; // Whoa
 			}, 100);
 			
 		},
-		/*	Keanu.trigger()
+		/*	Keanu.trigger( String event )
 		 *	@event - String - event type
 		 *	Fires a given event if a given event exists
 		 */
@@ -184,7 +184,7 @@ var Keanu; // Whoa
 			this.clearH = 0;
 			//this.trigger("clear"); 
 		},
-		/*	Keanu.setDimension()
+		/*	Keanu.setDimension( Number dim, Number val, Function fn )
 		 *	@dim - Number - dimension to set
 		 *	@val - Number - value to check against the dimension
 		 *	@fn - Function (Math.min or Math.max) - determine the appropriate value for dim
@@ -195,7 +195,7 @@ var Keanu; // Whoa
 				: val;
 			return dim;
 		},
-		/*	Keanu.setDimensions()
+		/*	Keanu.setDimensions( Object dims )
 		 *	@dims - Object ({x: 0, y: 0, w: 0, h: 0}) - Dimensions to set
 		 *	Determines the minimum X and Y, maximum Width and Height points to clear on redraw
 		 */
@@ -213,7 +213,7 @@ var Keanu; // Whoa
 				this.checkedDimensions = true;
 			}
 		},
-		/*	Keanu.isEmpty()
+		/*	Keanu.isEmpty( Object o )
 		 *	o - Object
 		 *	Checks a given object for properties
 		 *	returns true or false
@@ -243,7 +243,7 @@ var Keanu; // Whoa
 		 * Beware! Math be livin' below here, me hearties.
 		 */
 		tweens: {
-			/*	Keanu.tweens[linear|easeIn|easeOut|easeInOut|quadraticBezierCurve]();
+			/*	Keanu.tweens[linear|easeIn|easeOut|easeInOut|quadraticBezierCurve]( Number t, Number b, Number c, Number d );
 			 *	returns a value based upon the Time, Beginning value, Change between start and end, and animation Duration
 			 */
 			linear: function(t, b, c, d) { return c * t / d + b; },
