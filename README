@@ -1,1 +1,5 @@
 Keanu is a micro-framework for animation on Canvas using JavaScript.
+
+Currently in use on ESPN MLB Gamecast (and, coming soon, NBA Gamecast).
+
+See test.html and Basketball.js for a demo
